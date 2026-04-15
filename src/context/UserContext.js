@@ -10,14 +10,15 @@ export function UserProvider({ children }) {
   useEffect(() => {
     async function loadDummyUser() {
       try {
-        const userData = await geoquestFetch("/users/1");
+        const userData = await geoquestFetch("/users");
+
+        const me = userData[0];
         setUser({
-          uid: userData.UserID,
-          displayName:
-            userData.UserUsername || userData.UserFirstname || "Player 1",
+          uid: me.UserID,
+          displayName: me.UserUsername || me.UserFirstname || "Player 1",
         });
 
-        const userFinds = await geoquestFetch("/finds/players/1");
+        const userFinds = await geoquestFetch("/finds/players/276");
         setFoundCaches(userFinds || []);
       } catch (error) {
         console.warn("Could not load user data from API");
