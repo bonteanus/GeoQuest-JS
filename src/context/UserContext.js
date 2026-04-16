@@ -8,37 +8,44 @@ export function UserProvider({ children }) {
   const [foundCaches, setFoundCaches] = useState([]);
 
   useEffect(() => {
-    async function loadDummyUser() {
+    async function loadValidPlayer() {
       try {
-        // Step 1: Try fetching ALL users, not just ID 1
-        const allUsers = await geoquestFetch("/users");
+        // Step 1: Fetch ALL Players instead of Users
+        const allPlayers = await geoquestFetch("/players");
 
-        // Step 2: If we got data back, use the first person in the database
-        if (allUsers && allUsers.length > 0) {
-          const me = allUsers[0];
-          setUser({
-            uid: me.UserID,
-            displayName:
-              me.UserUsername || me.UserFirstname || `Player ${me.UserID}`,
-          });
-
-          // Step 3: Fetch the finds for this specific user
-          const userFinds = await geoquestFetch(`/finds/players/${me.UserID}`);
-          setFoundCaches(userFinds || []);
-        } else {
-          // If the array is empty, force an error to trigger the fallback
-          throw new Error("User list is empty");
+        if (!allPlayers || allPlayers.length === 0) {
+          throw new Error("No players found in database");
         }
-      } catch (error) {
-        console.warn(
-          "API User missing or 404 error. Falling back to local dummy data.",
+
+        // Step 2: Grab the first available Player record
+        const activePlayer = allPlayers[0];
+
+        // Step 3: Extract the nested UserObject to display on the Profile Screen
+        // Your teacher's API attaches the full user details inside 'PlayerUser'
+        const userDetails = activePlayer.PlayerUser;
+
+        setUser({
+          uid: userDetails.UserID,
+          displayName:
+            userDetails.UserUsername ||
+            userDetails.UserFirstname ||
+            `Player ${activePlayer.PlayerID}`,
+        });
+
+        // Step 4: Now we can safely fetch finds using the correct PlayerID
+        const playerFinds = await geoquestFetch(
+          `/finds/players/${activePlayer.PlayerID}`,
         );
-        // Step 4: The Fallback. This stops the app from crashing.
+
+        setFoundCaches(playerFinds || []);
+      } catch (error) {
+        console.warn("API Error. Falling back to local Guest data.");
+        // Fallback to prevent app crashes if the database is empty
         setUser({ uid: 999, displayName: "Guest Explorer" });
         setFoundCaches([]);
       }
     }
-    loadDummyUser();
+    loadValidPlayer();
   }, []);
 
   return (
