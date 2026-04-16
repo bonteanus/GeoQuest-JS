@@ -10,18 +10,14 @@ export function UserProvider({ children }) {
   useEffect(() => {
     async function loadValidPlayer() {
       try {
-        // Step 1: Fetch ALL Players instead of Users
         const allPlayers = await geoquestFetch("/players");
 
         if (!allPlayers || allPlayers.length === 0) {
           throw new Error("No players found in database");
         }
 
-        // Step 2: Grab the first available Player record
         const activePlayer = allPlayers[0];
 
-        // Step 3: Extract the nested UserObject to display on the Profile Screen
-        // Your teacher's API attaches the full user details inside 'PlayerUser'
         const userDetails = activePlayer.PlayerUser;
 
         setUser({
