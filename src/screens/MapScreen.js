@@ -71,7 +71,7 @@ export default function MapScreen({ navigation }) {
             styles.button,
             { opacity: pressed ? 0.7 : 1 },
           ]}
-          onPress={loadMapData}
+          onPress={() => loadMapData()}
         >
           <Text style={styles.buttonText}>Try Again</Text>
         </Pressable>
