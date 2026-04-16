@@ -8,82 +8,41 @@ export function UserProvider({ children }) {
   const [foundCaches, setFoundCaches] = useState([]);
 
   useEffect(() => {
-    async function loadPlayerContext() {
+    async function loadBulletproofData() {
       try {
-        // Step 1: Fetch player records, not users
-        const players = await geoquestFetch("/players");
+        // 1. Safely grab the first player in the database
+        const allPlayers = await geoquestFetch("/players");
+        if (!allPlayers || allPlayers.length === 0)
+          throw new Error("Database empty");
 
-        if (!Array.isArray(players) || players.length === 0) {
-          throw new Error("No players returned from API");
-        }
-
-        // Step 2: Pick the first available player for now
-        const currentPlayer = players[0];
-
-        // Step 3: Extract the nested user data from the player object
-        const nestedUser =
-          currentPlayer.User ||
-          currentPlayer.user ||
-          currentPlayer.PlayerUser ||
-          currentPlayer.playerUser ||
-          null;
+        const activePlayer = allPlayers[0];
+        const userDetails = activePlayer.PlayerUser || {};
 
         setUser({
-          uid:
-            currentPlayer.PlayerID ||
-            currentPlayer.playerId ||
-            currentPlayer.id ||
-            0,
+          uid: activePlayer.PlayerID,
           displayName:
-            (nestedUser &&
-              (nestedUser.UserUsername ||
-                nestedUser.UserFirstname ||
-                nestedUser.username ||
-                nestedUser.firstname)) ||
-            currentPlayer.PlayerName ||
-            `Player ${
-              currentPlayer.PlayerID ||
-              currentPlayer.playerId ||
-              currentPlayer.id ||
-              ""
-            }`,
+            userDetails.UserUsername ||
+            userDetails.UserFirstname ||
+            `Player ${activePlayer.PlayerID}`,
         });
 
-        // Step 4: Use PlayerID, not UserID, for finds
-        const playerId =
-          currentPlayer.PlayerID ||
-          currentPlayer.playerId ||
-          currentPlayer.id;
+        // 2. THE FIX: Do NOT ask the API for a specific player's finds. It will crash if they have 0.
+        // Instead, ask for ALL finds (this endpoint is safe and won't 404).
+        const allFinds = await geoquestFetch("/finds");
 
-        if (!playerId) {
-          throw new Error("PlayerID missing from player record");
-        }
-
-        try {
-          const playerFinds = await geoquestFetch(`/finds/players/${playerId}`);
-          setFoundCaches(Array.isArray(playerFinds) ? playerFinds : []);
-        } catch (findsError) {
-          console.warn(
-            "Could not load finds for this player. Using empty list.",
-            findsError
-          );
-          setFoundCaches([]);
-        }
-      } catch (error) {
-        console.warn(
-          "Could not load player context from API. Falling back to local empty state.",
-          error
+        // 3. Filter them locally on your computer instead of trusting the server.
+        const myFinds = allFinds.filter(
+          (find) => find.FindPlayerID === activePlayer.PlayerID,
         );
 
-        setUser({
-          uid: 999,
-          displayName: "Guest Explorer",
-        });
+        setFoundCaches(myFinds);
+      } catch (error) {
+        console.warn("API error caught. Using safe fallback data.");
+        setUser({ uid: 999, displayName: "Guest Explorer" });
         setFoundCaches([]);
       }
     }
-
-    loadPlayerContext();
+    loadBulletproofData();
   }, []);
 
   return (
