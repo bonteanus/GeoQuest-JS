@@ -6,7 +6,10 @@ import {
   TextInput,
   Pressable,
   ScrollView,
+  Image,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function CreateCacheScreen() {
   const [title, setTitle] = useState('');
@@ -15,6 +18,63 @@ export default function CreateCacheScreen() {
   const [longitude, setLongitude] = useState('');
   const [clue, setClue] = useState('');
   const [focusedInput, setFocusedInput] = useState('');
+  const [photoUri, setPhotoUri] = useState(null);
+
+  const handleTakePhoto = async () => {
+    try {
+      const permissionResult =
+        await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Camera Permission Needed',
+          'Please allow camera access to take a photo.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Could not open the camera.');
+    }
+  };
+
+  const handleChoosePhoto = async () => {
+    try {
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Library Permission Needed',
+          'Please allow photo library access to choose an image.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error choosing photo:', error);
+      Alert.alert('Error', 'Could not open the photo library.');
+    }
+  };
 
   const handleSubmit = () => {
     const newCache = {
@@ -23,9 +83,11 @@ export default function CreateCacheScreen() {
       latitude,
       longitude,
       clue,
+      photoUri,
     };
 
     console.log('Create cache submitted:', newCache);
+    Alert.alert('Cache Submitted', 'Your cache form has been submitted.');
   };
 
   const getInputStyle = (inputName) => {
@@ -94,12 +156,44 @@ export default function CreateCacheScreen() {
           multiline
         />
 
+        <Text style={styles.sectionLabel}>Cache Location Photo</Text>
+
+        <View style={styles.photoButtonRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
+            onPress={() => handleTakePhoto()}
+          >
+            <Text style={styles.secondaryButtonText}>Take Photo</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
+            onPress={() => handleChoosePhoto()}
+          >
+            <Text style={styles.secondaryButtonText}>Choose Photo</Text>
+          </Pressable>
+        </View>
+
+        {photoUri ? (
+          <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+        ) : (
+          <View style={styles.placeholderBox}>
+            <Text style={styles.placeholderText}>No photo selected yet.</Text>
+          </View>
+        )}
+
         <Pressable
           style={({ pressed }) => [
             styles.button,
             { opacity: pressed ? 0.7 : 1 },
           ]}
-          onPress={handleSubmit}
+          onPress={() => handleSubmit()}
         >
           <Text style={styles.buttonText}>Submit Cache</Text>
         </Pressable>
@@ -127,6 +221,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 16,
   },
+  sectionLabel: {
+    color: '#4CAF50',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 8,
+    marginBottom: 12,
+  },
   input: {
     backgroundColor: '#0f1b2d',
     borderWidth: 1,
@@ -143,6 +244,46 @@ const styles = StyleSheet.create({
   multilineInput: {
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  photoButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  secondaryButton: {
+    flex: 1,
+    backgroundColor: '#0f1b2d',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  photoPreview: {
+    width: '100%',
+    height: 220,
+    borderRadius: 10,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#2e4057',
+  },
+  placeholderBox: {
+    height: 120,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2e4057',
+    backgroundColor: '#0f1b2d',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  placeholderText: {
+    color: '#aaa',
+    fontSize: 14,
   },
   button: {
     backgroundColor: '#4CAF50',
