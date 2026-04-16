@@ -10,19 +10,40 @@ export function UserProvider({ children }) {
   useEffect(() => {
     async function loadDummyUser() {
       try {
-        const userData = await geoquestFetch("/users/1");
+        const userData = await geoquestFetch("/users");
+        const me = Array.isArray(userData) && userData.length > 0 ? userData[0] : null;
+
+        if (!me) {
+          setUser({
+            uid: 0,
+            displayName: "Player 1",
+          });
+          setFoundCaches([]);
+          return;
+        }
+
         setUser({
-          uid: userData.UserID,
-          displayName:
-            userData.UserUsername || userData.UserFirstname || "Player 1",
+          uid: me.UserID,
+          displayName: me.UserUsername || me.UserFirstname || "Player 1",
         });
 
-        const userFinds = await geoquestFetch("/finds/players/1");
-        setFoundCaches(userFinds || []);
+        try {
+          const userFinds = await geoquestFetch(`/finds/players/${me.UserID}`);
+          setFoundCaches(Array.isArray(userFinds) ? userFinds : []);
+        } catch (findsError) {
+          console.warn("No finds found for this user, defaulting to empty list.", findsError);
+          setFoundCaches([]);
+        }
       } catch (error) {
-        console.warn("Could not load user data from API");
+        console.warn("Could not load user data from API", error);
+        setUser({
+          uid: 0,
+          displayName: "Player 1",
+        });
+        setFoundCaches([]);
       }
     }
+
     loadDummyUser();
   }, []);
 
