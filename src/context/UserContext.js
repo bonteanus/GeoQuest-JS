@@ -8,43 +8,82 @@ export function UserProvider({ children }) {
   const [foundCaches, setFoundCaches] = useState([]);
 
   useEffect(() => {
-    async function loadDummyUser() {
+    async function loadPlayerContext() {
       try {
-        const userData = await geoquestFetch("/users");
-        const me = Array.isArray(userData) && userData.length > 0 ? userData[0] : null;
+        // Step 1: Fetch player records, not users
+        const players = await geoquestFetch("/players");
 
-        if (!me) {
-          setUser({
-            uid: 0,
-            displayName: "Player 1",
-          });
-          setFoundCaches([]);
-          return;
+        if (!Array.isArray(players) || players.length === 0) {
+          throw new Error("No players returned from API");
         }
 
+        // Step 2: Pick the first available player for now
+        const currentPlayer = players[0];
+
+        // Step 3: Extract the nested user data from the player object
+        const nestedUser =
+          currentPlayer.User ||
+          currentPlayer.user ||
+          currentPlayer.PlayerUser ||
+          currentPlayer.playerUser ||
+          null;
+
         setUser({
-          uid: me.UserID,
-          displayName: me.UserUsername || me.UserFirstname || "Player 1",
+          uid:
+            currentPlayer.PlayerID ||
+            currentPlayer.playerId ||
+            currentPlayer.id ||
+            0,
+          displayName:
+            (nestedUser &&
+              (nestedUser.UserUsername ||
+                nestedUser.UserFirstname ||
+                nestedUser.username ||
+                nestedUser.firstname)) ||
+            currentPlayer.PlayerName ||
+            `Player ${
+              currentPlayer.PlayerID ||
+              currentPlayer.playerId ||
+              currentPlayer.id ||
+              ""
+            }`,
         });
 
+        // Step 4: Use PlayerID, not UserID, for finds
+        const playerId =
+          currentPlayer.PlayerID ||
+          currentPlayer.playerId ||
+          currentPlayer.id;
+
+        if (!playerId) {
+          throw new Error("PlayerID missing from player record");
+        }
+
         try {
-          const userFinds = await geoquestFetch(`/finds/players/${me.UserID}`);
-          setFoundCaches(Array.isArray(userFinds) ? userFinds : []);
+          const playerFinds = await geoquestFetch(`/finds/players/${playerId}`);
+          setFoundCaches(Array.isArray(playerFinds) ? playerFinds : []);
         } catch (findsError) {
-          console.warn("No finds found for this user, defaulting to empty list.", findsError);
+          console.warn(
+            "Could not load finds for this player. Using empty list.",
+            findsError
+          );
           setFoundCaches([]);
         }
       } catch (error) {
-        console.warn("Could not load user data from API", error);
+        console.warn(
+          "Could not load player context from API. Falling back to local empty state.",
+          error
+        );
+
         setUser({
-          uid: 0,
-          displayName: "Player 1",
+          uid: 999,
+          displayName: "Guest Explorer",
         });
         setFoundCaches([]);
       }
     }
 
-    loadDummyUser();
+    loadPlayerContext();
   }, []);
 
   return (
