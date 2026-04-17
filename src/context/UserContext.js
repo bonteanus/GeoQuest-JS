@@ -8,40 +8,41 @@ export function UserProvider({ children }) {
   const [foundCaches, setFoundCaches] = useState([]);
 
   useEffect(() => {
-    async function loadValidPlayer() {
+    async function loadBulletproofData() {
       try {
+        // 1. Safely grab the first player in the database
         const allPlayers = await geoquestFetch("/players");
-
-        if (!allPlayers || allPlayers.length === 0) {
-          throw new Error("No players found in database");
-        }
+        if (!allPlayers || allPlayers.length === 0)
+          throw new Error("Database empty");
 
         const activePlayer = allPlayers[0];
-
-        const userDetails = activePlayer.PlayerUser;
+        const userDetails = activePlayer.PlayerUser || {};
 
         setUser({
-          uid: userDetails.UserID,
+          uid: activePlayer.PlayerID,
           displayName:
             userDetails.UserUsername ||
             userDetails.UserFirstname ||
             `Player ${activePlayer.PlayerID}`,
         });
 
-        // Step 4: Now we can safely fetch finds using the correct PlayerID
-        const playerFinds = await geoquestFetch(
-          `/finds/players/${activePlayer.PlayerID}`,
+        // 2. THE FIX: Do NOT ask the API for a specific player's finds. It will crash if they have 0.
+        // Instead, ask for ALL finds (this endpoint is safe and won't 404).
+        const allFinds = await geoquestFetch("/finds");
+
+        // 3. Filter them locally on your computer instead of trusting the server.
+        const myFinds = allFinds.filter(
+          (find) => find.FindPlayerID === activePlayer.PlayerID,
         );
 
-        setFoundCaches(playerFinds || []);
+        setFoundCaches(myFinds);
       } catch (error) {
-        console.warn("API Error. Falling back to local Guest data.");
-        // Fallback to prevent app crashes if the database is empty
+        console.warn("API error caught. Using safe fallback data.");
         setUser({ uid: 999, displayName: "Guest Explorer" });
         setFoundCaches([]);
       }
     }
-    loadValidPlayer();
+    loadBulletproofData();
   }, []);
 
   return (
