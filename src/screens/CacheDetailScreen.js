@@ -10,9 +10,15 @@ import {
 } from "react-native";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
-import { recordFindOnServer, savePointsLocal } from "../utils/storage";
 
-// Haversine formula to calculate distance in meters between two GPS coordinates
+// Import API and Utility functions
+// Note: Ensure these files exist in your project structure
+import { recordFindOnServer } from "../services/api"; 
+import { savePointsLocal } from "../utils/storage"; 
+
+/**
+ * The Haversine formula to calculate physical meters between two GPS coordinates
+ */
 function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
   const R = 6371e3; // Earth radius in meters
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -31,15 +37,14 @@ export default function CacheDetailScreen({ route }) {
   const { cache } = route.params || {};
   const [proofPhotoUri, setProofPhotoUri] = useState(null);
 
-  // --- FRIEND'S CAMERA LOGIC ---
+  // --- CAMERA & PHOTO LOGIC ---
   const handleTakePhoto = async () => {
     try {
-      const permissionResult =
-        await ImagePicker.requestCameraPermissionsAsync();
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
       if (!permissionResult.granted) {
         Alert.alert(
           "Camera Permission Needed",
-          "Please allow camera access to take a proof photo.",
+          "Please allow camera access to take a proof photo."
         );
         return;
       }
@@ -59,12 +64,11 @@ export default function CacheDetailScreen({ route }) {
 
   const handleChoosePhoto = async () => {
     try {
-      const permissionResult =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
         Alert.alert(
           "Library Permission Needed",
-          "Please allow photo library access to choose a proof photo.",
+          "Please allow photo library access to choose a proof photo."
         );
         return;
       }
@@ -82,21 +86,21 @@ export default function CacheDetailScreen({ route }) {
     }
   };
 
-  // --- YOUR GPS LOGIC ---
+  // --- GPS VERIFICATION LOGIC ---
   const handleLogFind = async () => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
           "Permission Denied",
-          "Location access is needed to verify this find.",
+          "Location access is needed to verify this find."
         );
         return;
       }
 
       Alert.alert(
         "Verifying...",
-        "Checking your GPS location against the cache...",
+        "Checking your GPS location against the cache..."
       );
 
       let userLocation = await Location.getCurrentPositionAsync({
@@ -111,7 +115,7 @@ export default function CacheDetailScreen({ route }) {
       if (!cacheLat || !cacheLon || isNaN(cacheLat) || isNaN(cacheLon)) {
         Alert.alert(
           "Data Error",
-          "This cache has invalid GPS coordinates in the database.",
+          "This cache has invalid GPS coordinates in the database."
         );
         return;
       }
@@ -120,9 +124,10 @@ export default function CacheDetailScreen({ route }) {
         userLat,
         userLon,
         cacheLat,
-        cacheLon,
+        cacheLon
       );
 
+      // Distance check: must be within 50 meters
       if (distance <= 50) {
         const dummyPlayerID = "1";
         const cacheID = cache.CacheID || cache.id;
@@ -135,25 +140,25 @@ export default function CacheDetailScreen({ route }) {
 
           Alert.alert(
             "🎉 Cache Found!",
-            `Verification successful! ${earnedPoints} points recorded.`,
+            `Verification successful! ${earnedPoints} points recorded.`
           );
         } else {
           Alert.alert(
             "Server Error",
-            "Distance verified, but could not sync with the GeoQuest API.",
+            "Distance verified, but could not sync with the GeoQuest API."
           );
         }
       } else {
         Alert.alert(
           "Too Far Away!",
-          `You are ${Math.round(distance)} meters away. You must be within 50m to log this find.`,
+          `You are ${Math.round(distance)} meters away. You must be within 50m to log this find.`
         );
       }
     } catch (error) {
       console.error("Log Find Error:", error);
       Alert.alert(
         "Error",
-        "An unexpected error occurred while verifying your location.",
+        "An unexpected error occurred while verifying your location."
       );
     }
   };
@@ -177,7 +182,7 @@ export default function CacheDetailScreen({ route }) {
         <Text style={styles.sectionHeader}>Clue</Text>
         <Text style={styles.clue}>{cache.CacheClue || cache.clue}</Text>
 
-        {/* CAMERA UI */}
+        {/* --- CAMERA UI SECTION --- */}
         <Text style={[styles.sectionHeader, { marginTop: 20 }]}>
           Proof Photo (Optional)
         </Text>
@@ -212,7 +217,7 @@ export default function CacheDetailScreen({ route }) {
           </View>
         )}
 
-        {/* COMBINED LOG FIND BUTTON */}
+        {/* --- MAIN ACTION BUTTON --- */}
         <Pressable
           style={({ pressed }) => [
             styles.button,
