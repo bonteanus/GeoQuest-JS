@@ -9,6 +9,8 @@ import {
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import { fetchLiveCaches } from "../services/cacheService";
+import { getEventCaches } from "../services/api";
+import { useUser } from "../context/UserContext";
 
 export default function MapScreen({ navigation }) {
   const [region, setRegion] = useState(null);
@@ -16,15 +18,17 @@ export default function MapScreen({ navigation }) {
   const [selectedCache, setSelectedCache] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const { activeEventId } = useUser();
 
   useEffect(() => {
     loadMapData();
-  }, []);
+  }, [activeEventId]);
 
   const loadMapData = async () => {
     try {
       setLoading(true);
       setErrorMessage("");
+      setSelectedCache(null);
 
       const { status } = await Location.requestForegroundPermissionsAsync();
 
@@ -35,7 +39,13 @@ export default function MapScreen({ navigation }) {
       }
 
       const location = await Location.getCurrentPositionAsync({});
-      const liveCaches = await fetchLiveCaches();
+
+      let liveCaches = [];
+      if (activeEventId) {
+        liveCaches = await getEventCaches(activeEventId);
+      } else {
+        liveCaches = await fetchLiveCaches();
+      }
 
       setRegion({
         latitude: location.coords.latitude,
@@ -89,6 +99,14 @@ export default function MapScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {activeEventId ? (
+        <View style={styles.eventBanner}>
+          <Text style={styles.eventBannerText}>
+            Event Mode Active: Event #{activeEventId}
+          </Text>
+        </View>
+      ) : null}
+
       <MapView
         style={styles.map}
         initialRegion={region}
@@ -97,10 +115,15 @@ export default function MapScreen({ navigation }) {
       >
         {caches.map((cache) => (
           <Marker
-            key={String(cache.cacheId)}
-            coordinate={cache.coordinates}
-            title={cache.title}
-            description={cache.description}
+            key={String(cache.cacheId || cache.CacheID || Math.random())}
+            coordinate={
+              cache.coordinates || {
+                latitude: cache.CacheLatitude,
+                longitude: cache.CacheLongitude,
+              }
+            }
+            title={cache.title || cache.CacheTitle}
+            description={cache.description || cache.CacheDescription}
             onPress={() => setSelectedCache(cache)}
           />
         ))}
@@ -108,8 +131,12 @@ export default function MapScreen({ navigation }) {
 
       {selectedCache && (
         <View style={styles.bottomCard}>
-          <Text style={styles.cacheTitle}>{selectedCache.title}</Text>
-          <Text style={styles.cachePoints}>{selectedCache.points} points</Text>
+          <Text style={styles.cacheTitle}>
+            {selectedCache.title || selectedCache.CacheTitle}
+          </Text>
+          <Text style={styles.cachePoints}>
+            {selectedCache.points || selectedCache.CachePoints || 0} points
+          </Text>
 
           <Pressable
             style={({ pressed }) => [
@@ -135,6 +162,23 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  eventBanner: {
+    position: "absolute",
+    top: 12,
+    left: 16,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: "#1e2d3d",
+    borderWidth: 1,
+    borderColor: "#4CAF50",
+    borderRadius: 8,
+    padding: 10,
+  },
+  eventBannerText: {
+    color: "#fff",
+    textAlign: "center",
+    fontWeight: "bold",
   },
   bottomCard: {
     position: "absolute",
