@@ -13,10 +13,8 @@ export function UserProvider({ children }) {
     async function loadBulletproofData() {
       try {
         const allPlayers = await geoquestFetch("/players");
-
-        if (!allPlayers || allPlayers.length === 0) {
+        if (!allPlayers || allPlayers.length === 0)
           throw new Error("Database empty");
-        }
 
         const activePlayer = allPlayers[0];
         const userDetails = activePlayer.PlayerUser || {};
@@ -29,19 +27,22 @@ export function UserProvider({ children }) {
             `Player ${activePlayer.PlayerID}`,
         });
 
+        // 2. THE FIX: Do NOT ask the API for a specific player's finds. It will crash if they have 0.
+        // Instead, ask for ALL finds (this endpoint is safe and won't 404).
         const allFinds = await geoquestFetch("/finds");
+
+        // 3. Filter them locally on your computer instead of trusting the server.
         const myFinds = allFinds.filter(
-          (find) => find.FindPlayerID === activePlayer.PlayerID
+          (find) => find.FindPlayerID === activePlayer.PlayerID,
         );
 
         setFoundCaches(myFinds);
       } catch (error) {
-        console.warn("API error caught. Using safe fallback data.", error);
+        console.warn("API error caught. Using safe fallback data.");
         setUser({ uid: 999, displayName: "Guest Explorer" });
         setFoundCaches([]);
       }
     }
-
     loadBulletproofData();
   }, []);
 

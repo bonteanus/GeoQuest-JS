@@ -1,7 +1,9 @@
 const BASE_URL = "https://mark0s.com/geoquest/v1/api";
 const API_KEY = "16gv8f"; // Public key from your brief
 
-// Core fetch wrapper for the GeoQuest REST API
+/**
+ * Core fetch wrapper for the GeoQuest REST API
+ */
 export async function geoquestFetch(endpoint, options = {}) {
   const separator = endpoint.includes("?") ? "&" : "?";
   const url = `${BASE_URL}${endpoint}${separator}key=${API_KEY}`;
@@ -26,7 +28,9 @@ export async function geoquestFetch(endpoint, options = {}) {
   }
 }
 
-// --- PERSON A: EVENT OWNER SERVICES ---
+/**
+ * --- PERSON A: EVENT OWNER SERVICES ---
+ */
 
 // 1. Create a new private event
 export const createPrivateEvent = async (eventData) => {
@@ -61,7 +65,9 @@ export const getEventLeaderboard = async (eventId) => {
   }
 };
 
-// --- PERSON B: EVENT PARTICIPANT SERVICES ---
+/**
+ * --- PERSON B: EVENT PARTICIPANT SERVICES ---
+ */
 
 // 4. Validate and join event by invite code
 export const getEventByCode = async (inviteCode) => {

@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -9,6 +9,9 @@ import CacheDetailScreen from "../screens/CacheDetailScreen";
 import CreateCacheScreen from "../screens/CreateCacheScreen";
 import JoinEventScreen from "../screens/JoinEventScreen";
 import CreateEventCacheScreen from "../screens/CreateEventCacheScreen";
+
+import CreateEventScreen from "../screens/CreateEventScreen";
+import EventLeaderboardScreen from "../screens/EventLeaderboardScreen";
 
 import * as CacheListScreenModule from "../screens/CacheListScreen";
 import * as LeaderboardScreenModule from "../screens/LeaderboardScreen";
@@ -70,16 +73,28 @@ export default function AppNavigator() {
           options={({ navigation }) => ({
             title: "GeoQuest",
             headerRight: () => (
-              <Pressable
-                onPress={() => navigation.navigate("JoinEvent")}
-                style={({ pressed }) => [
-                  { opacity: pressed ? 0.7 : 1, marginRight: 8 },
-                ]}
-              >
-                <Text style={{ color: "#4CAF50", fontWeight: "bold" }}>
-                  Join
-                </Text>
-              </Pressable>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Pressable
+                  onPress={() => navigation.navigate("JoinEvent")}
+                  style={({ pressed }) => [
+                    { opacity: pressed ? 0.7 : 1, marginRight: 15 },
+                  ]}
+                >
+                  <Text style={{ color: "#4CAF50", fontWeight: "bold" }}>
+                    Join
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => navigation.navigate("CreateCache")}
+                  style={({ pressed }) => [
+                    { opacity: pressed ? 0.7 : 1, marginRight: 8 },
+                  ]}
+                >
+                  <Text style={{ color: "#4CAF50", fontWeight: "bold" }}>
+                    Create
+                  </Text>
+                </Pressable>
+              </View>
             ),
           })}
         />
@@ -102,6 +117,18 @@ export default function AppNavigator() {
           name="CreateEventCache"
           component={CreateEventCacheScreen}
           options={{ title: "Create Event Cache" }}
+        />
+
+        {/* --- NEW STACK SCREENS FOR OPTION B --- */}
+        <Stack.Screen
+          name="CreateEvent"
+          component={CreateEventScreen}
+          options={{ title: "Host an Event" }}
+        />
+        <Stack.Screen
+          name="EventLeaderboard"
+          component={EventLeaderboardScreen}
+          options={{ title: "Event Rankings" }}
         />
       </Stack.Navigator>
     </NavigationContainer>
