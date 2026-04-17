@@ -72,16 +72,3 @@ export const getEventByCode = async (inviteCode) => {
     return null;
   }
 };
-
-// 5. Create a cache for a specific event
-export const createEventCache = async (cacheData) => {
-  try {
-    return await geoquestFetch("/caches", {
-      method: "POST",
-      body: JSON.stringify(cacheData),
-    });
-  } catch (error) {
-    console.error("Failed to create event cache:", error);
-    return null;
-  }
-};
