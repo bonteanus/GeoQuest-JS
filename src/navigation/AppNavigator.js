@@ -8,7 +8,6 @@ import MapScreen from "../screens/MapScreen";
 import CacheDetailScreen from "../screens/CacheDetailScreen";
 import CreateCacheScreen from "../screens/CreateCacheScreen";
 
-// --- NEW SCREENS ADDED FOR OPTION B ---
 import CreateEventScreen from "../screens/CreateEventScreen";
 import EventLeaderboardScreen from "../screens/EventLeaderboardScreen";
 
