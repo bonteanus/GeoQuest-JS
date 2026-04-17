@@ -1,5 +1,5 @@
 const BASE_URL = "https://mark0s.com/geoquest/v1/api";
-const API_KEY = "16gv8f"; // Public key from your brief [cite: 3]
+const API_KEY = "16gv8f"; // Public key from your brief
 
 /**
  * Core fetch wrapper for the GeoQuest REST API
@@ -62,5 +62,19 @@ export const getEventLeaderboard = async (eventId) => {
   } catch (error) {
     console.error("Failed to fetch event leaderboard:", error);
     return [];
+  }
+};
+
+/**
+ * --- PERSON B: EVENT PARTICIPANT SERVICES ---
+ */
+
+// 4. Validate and join event by invite code
+export const getEventByCode = async (inviteCode) => {
+  try {
+    return await geoquestFetch(`/events/code/${inviteCode}`);
+  } catch (error) {
+    console.error("Failed to verify invite code:", error);
+    return null;
   }
 };
