@@ -1,39 +1,44 @@
-import { geoquestFetch } from "./api";
+const API_BASE = "https://mark0s.com/geoquest/v1/api";
+const API_KEY = "16gv8f";
 
-export async function getGlobalLeaderboard() {
+export const getGlobalLeaderboard = async () => {
   try {
-    // 1. Fetch all the relational data from the university API
-    const [users, finds, caches] = await Promise.all([
-      geoquestFetch("/users"),
-      geoquestFetch("/finds"),
-      geoquestFetch("/caches"),
-    ]);
+    // 1. Fetch absolutely all finds from the GeoQuest API
+    const response = await fetch(`${API_BASE}/finds?key=${API_KEY}`);
+    const finds = await response.json();
 
-    // 2. Create a dictionary to track everyone's points
-    const userPoints = {};
-    users.forEach((u) => {
-      userPoints[u.UserID] = 0;
-    });
+    //Tally up the points for each player
+    const playerScores = {};
 
-    // 3. Loop through all the "Finds" to calculate scores
     finds.forEach((find) => {
-      const cacheFound = caches.find((c) => c.CacheID === find.FindCacheID);
-      if (cacheFound && userPoints[find.FindPlayerID] !== undefined) {
-        userPoints[find.FindPlayerID] += cacheFound.CachePoints;
+      const playerId = find.FindPlayerID;
+      // The API nests the Cache object inside the Find object. Points are grabbed safely
+      const points = find.FindCache?.CachePoints || 10;
+      // Grab their username, or give them a fallback name
+      const playerName =
+        find.FindPlayer?.PlayerUser?.UserUsername ||
+        find.FindPlayer?.PlayerUser?.UserFirstname ||
+        `Player ${playerId}`;
+
+      // If they aren't on the scoreboard yet, add them
+      if (!playerScores[playerId]) {
+        playerScores[playerId] = {
+          id: playerId,
+          name: playerName,
+          points: 0,
+        };
       }
+
+      // Add the points for this specific cache find
+      playerScores[playerId].points += Number(points);
     });
 
-    // 4. Format it exactly how your UI expects it and sort highest to lowest
-    const leaderboard = users.map((user) => ({
-      uid: user.UserID,
-      displayName:
-        user.UserUsername || user.UserFirstname || `Player ${user.UserID}`,
-      points: userPoints[user.UserID] || 0,
-    }));
-
-    return leaderboard.sort((a, b) => b.points - a.points);
+    const leaderboardArray = Object.values(playerScores).sort(
+      (a, b) => b.points - a.points,
+    );
+    return leaderboardArray;
   } catch (error) {
-    console.error("Error calculating leaderboard:", error);
-    return [];
+    console.error("Leaderboard fetch error:", error);
+    return []; // Return an empty array so the app doesn't crash!
   }
-}
+};

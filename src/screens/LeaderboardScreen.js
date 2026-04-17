@@ -2,75 +2,82 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
+  FlatList,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { getGlobalLeaderboard } from "../services/leaderboardService";
+import { useUser } from "../context/UserContext"; // To highlight YOUR score!
 
 export default function LeaderboardScreen() {
-  const [globalData, setGlobalData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useUser();
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
+  // The function to pull data from our service
+  const fetchScores = async () => {
+    const data = await getGlobalLeaderboard();
+    setLeaderboardData(data);
+  };
+
+  // Run this the exact second the screen opens
   useEffect(() => {
-    async function loadLeaderboard() {
-      const data = await getGlobalLeaderboard();
-      setGlobalData(data);
-      setLoading(false);
-    }
-    loadLeaderboard();
+    const loadInitialData = async () => {
+      await fetchScores();
+      setIsLoading(false);
+    };
+    loadInitialData();
   }, []);
 
-  function getRankColor(index) {
-    if (index === 0) return "#FFD700"; // Gold
-    if (index === 1) return "#C0C0C0"; // Silver
-    if (index === 2) return "#CD7F32"; // Bronze
-    return "#aaa";
-  }
+  // Run this if the user pulls down on the screen to refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchScores();
+    setRefreshing(false);
+  };
 
-  function renderEntry({ item, index }) {
-    // For now, we highlight User 1 as our "Logged in" player
-    const isCurrentUser = item.uid === 1;
+  // How a single row on the leaderboard looks
+  const renderItem = ({ item, index }) => {
+    // Check if this row belongs to the person holding the phone
+    const isMe = user && String(user.uid) === String(item.id);
 
     return (
-      <View style={[styles.row, isCurrentUser && styles.currentUserRow]}>
-        <Text style={[styles.rank, { color: getRankColor(index) }]}>
-          #{index + 1}
-        </Text>
-        <View style={styles.playerInfo}>
-          <Text style={styles.playerName}>
-            {item.displayName}
-            {isCurrentUser ? " (you)" : ""}
+      <View style={[styles.itemRow, isMe && styles.myRow]}>
+        <View style={styles.rankContainer}>
+          <Text style={styles.rankText}>#{index + 1}</Text>
+          <Text style={[styles.nameText, isMe && styles.myNameText]}>
+            {item.name} {isMe ? "(You)" : ""}
           </Text>
         </View>
-        <Text style={styles.points}>{item.points} pts</Text>
+        <Text style={styles.pointsText}>{item.points} pts</Text>
       </View>
     );
-  }
-
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Calculating ranks...</Text>
-      </View>
-    );
-  }
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Global Leaderboard</Text>
+      <Text style={styles.header}>Global Rankings</Text>
 
-      {globalData.length === 0 ? (
-        <View style={styles.centered}>
-          <Text style={styles.emptyText}>No entries yet</Text>
-        </View>
+      {/* User Feedback: Show a spinner while the API is thinking */}
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#4CAF50" style={styles.loader} />
       ) : (
         <FlatList
-          data={globalData}
-          keyExtractor={(item) => item.uid.toString()}
-          contentContainerStyle={styles.list}
-          renderItem={renderEntry}
+          data={leaderboardData}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderItem}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#4CAF50"
+            />
+          }
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No caches have been found yet!</Text>
+          }
         />
       )}
     </View>
@@ -78,36 +85,39 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0f1b2d", paddingTop: 60 },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#0f1b2d",
-  },
-  loadingText: { color: "#aaa", marginTop: 10 },
-  title: {
-    fontSize: 28,
+  container: { flex: 1, backgroundColor: "#0f1b2d", padding: 20 },
+  header: {
+    fontSize: 26,
     fontWeight: "bold",
     color: "#fff",
-    paddingHorizontal: 24,
     marginBottom: 20,
+    textAlign: "center",
   },
-  list: { padding: 24 },
-  row: {
+  loader: { marginTop: 50 },
+  itemRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#1e2d3d",
-    borderRadius: 10,
     padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#2e4057",
+    backgroundColor: "#1e2d3d",
+    borderRadius: 12,
+    marginBottom: 12,
   },
-  currentUserRow: { borderColor: "#4CAF50", backgroundColor: "#182b3c" },
-  rank: { fontSize: 16, fontWeight: "bold", width: 44 },
-  playerInfo: { flex: 1 },
-  playerName: { color: "#fff", fontSize: 15, fontWeight: "bold" },
-  points: { color: "#4CAF50", fontSize: 15, fontWeight: "bold" },
-  emptyText: { color: "#aaa", fontSize: 15, textAlign: "center" },
+  myRow: { borderColor: "#4CAF50", borderWidth: 2, backgroundColor: "#1a3a2a" },
+  rankContainer: { flexDirection: "row", alignItems: "center" },
+  rankText: {
+    color: "#aaa",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginRight: 15,
+  },
+  nameText: { color: "#fff", fontSize: 18 },
+  myNameText: { fontWeight: "bold", color: "#4CAF50" },
+  pointsText: { color: "#4CAF50", fontWeight: "bold", fontSize: 18 },
+  emptyText: {
+    color: "#aaa",
+    textAlign: "center",
+    marginTop: 40,
+    fontSize: 16,
+  },
 });

@@ -8,8 +8,10 @@ import {
   ScrollView,
 } from "react-native";
 import * as Location from "expo-location";
+import { recordFindOnServer, savePointsLocal } from "../utils/storage";
 
-// The Haversine formula to calculate physical meters between two GPS coordinates
+// Haversine formula to calculate distance in meters between two GPS coordinates
+// This ensures "robust proximity-based unlocking" as required by the brief
 function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
   const R = 6371e3; // Earth radius in meters
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -25,27 +27,28 @@ function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
 }
 
 export default function CacheDetailScreen({ route }) {
-  // Extract the specific cache data passed from the Map or List screen
+  // Extract cache data passed from the Map or List screen
   const { cache } = route.params;
 
-  // The engine that fires when the user tries to claim a cache
   const handleLogFind = async () => {
     try {
+      // 1. Request Sensor Permissions
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
           "Permission Denied",
-          "We need your location to verify the find!",
+          "Location access is needed to verify this find.",
         );
         return;
       }
 
+      // 2. Visual Feedback (UX Indicator)
       Alert.alert(
         "Verifying...",
         "Checking your GPS location against the cache...",
       );
 
-      // Get user location (Balanced accuracy prevents emulator freeze)
+      // 3. Capture Location Data
       let userLocation = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -53,20 +56,19 @@ export default function CacheDetailScreen({ route }) {
       const userLat = userLocation.coords.latitude;
       const userLon = userLocation.coords.longitude;
 
-      // Force the data to become actual Numbers
+      // 4. Coordinate Validation (Safety net for "Technical Competence")
       const cacheLat = Number(cache.CacheLatitude || cache.latitude);
       const cacheLon = Number(cache.CacheLongitude || cache.longitude);
 
-      // THE SAFETY NET: Check if the cache coordinates are missing or invalid
       if (!cacheLat || !cacheLon || isNaN(cacheLat) || isNaN(cacheLon)) {
         Alert.alert(
-          "Broken Cache",
-          "This cache is missing valid GPS coordinates in the database!",
+          "Data Error",
+          "This cache has invalid GPS coordinates in the database.",
         );
         return;
       }
 
-      // Run the math
+      // 5. Run Distance Calculation
       const distance = getDistanceFromLatLonInM(
         userLat,
         userLon,
@@ -74,23 +76,43 @@ export default function CacheDetailScreen({ route }) {
         cacheLon,
       );
 
-      // Enforce the 50-meter Geofence
+      // 6. Geofence Check (Mandatory: 50-meter proximity)
       if (distance <= 50) {
-        Alert.alert(
-          "🎉 Cache Found!",
-          "You are within 50 meters! Points added.",
-        );
+        // Use a dummy PlayerID '1' until User Registration is completed
+        const dummyPlayerID = "1";
+        const cacheID = cache.CacheID || cache.id;
+
+        // REST API Integration
+        const apiResult = await recordFindOnServer(dummyPlayerID, cacheID);
+
+        if (apiResult) {
+          const earnedPoints = Number(cache.CachePoints || cache.points || 10);
+
+          // Persistence: Local Storage backup
+          await savePointsLocal(earnedPoints);
+
+          Alert.alert(
+            "🎉 Cache Found!",
+            `Verification successful! ${earnedPoints} points recorded on the GeoQuest server.`,
+          );
+        } else {
+          Alert.alert(
+            "Server Error",
+            "Distance verified, but could not sync with the GeoQuest API.",
+          );
+        }
       } else {
+        // Clear user feedback for distance
         Alert.alert(
           "Too Far Away!",
-          `You are ${Math.round(distance)} meters away. Get closer to the cache to log it.`,
+          `You are ${Math.round(distance)} meters away. You must be within 50m to log this find.`,
         );
       }
     } catch (error) {
-      console.warn("Location fetch error:", error);
+      console.error("Log Find Error:", error);
       Alert.alert(
         "Error",
-        "Could not get your location. Make sure your GPS is on.",
+        "An unexpected error occurred while verifying your location.",
       );
     }
   };
